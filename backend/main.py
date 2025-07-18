@@ -4,7 +4,8 @@ from contextlib import asynccontextmanager
 import motor.motor_asyncio
 import os
 
-from app.routers import auth, goals, progress, ai_coach, community
+from app.routers import auth, goals, progress, community
+from app.routers import goal_analysis, action_planning, coaching_messages, ai_test
 from app.core.config import settings
 
 
@@ -40,8 +41,13 @@ app.add_middleware(
 app.include_router(auth.router, prefix="/api/auth", tags=["authentication"])
 app.include_router(goals.router, prefix="/api/goals", tags=["goals"])
 app.include_router(progress.router, prefix="/api/progress", tags=["progress"])
-app.include_router(ai_coach.router, prefix="/api/ai", tags=["ai_coach"])
 app.include_router(community.router, prefix="/api/community", tags=["community"])
+
+# AI 관련 라우터들 (기능별로 분리)
+app.include_router(goal_analysis.router, prefix="/api/ai", tags=["goal_analysis"])
+app.include_router(action_planning.router, prefix="/api/ai", tags=["action_planning"])
+app.include_router(coaching_messages.router, prefix="/api/ai", tags=["coaching_messages"])
+app.include_router(ai_test.router, prefix="/api/ai", tags=["ai_test"])
 
 
 @app.get("/")
