@@ -1,0 +1,90 @@
+services:
+  frontend:
+    build: 
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3000"
+    volumes:
+      # Windows 개발 환경에서 실시간 코드 변경 반영을 위한 볼륨 마운트
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
+      - /app/node_modules  # node_modules는 컨테이너 내부 것 사용
+    environment:
+      - CHOKIDAR_USEPOLLING=true  # Windows에서 파일 변경 감지를 위한 설정
+      - WATCHPACK_POLLING=true
+    depends_on:
+      - backend
+    networks:
+      - goalmaster-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      # Windows 개발 환경에서 실시간 코드 변경 반영을 위한 볼륨 마운트
+      - ./backend:/app
+      - /app/__pycache__  # 파이썬 캐시 파일은 컨테이너 내부 것 사용
+    environment:
+      - MONGODB_URL=mongodb://admin:password@mongodb:27017/goalmaster?authSource=admin
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - PYTHONPATH=/app
+      - ENVIRONMENT=development
+    depends_on:
+      - mongodb
+    networks:
+      - goalmaster-network
+
+  mongodb:
+    image: mongo:7.0
+    ports:
+      - "27017:27017"
+    volumes:
+      # Windows 환경에서 MongoDB 데이터 지속성을 위한 볼륨
+      - mongodb_data:/data/db
+      - ./mongodb/init:/docker-entrypoint-initdb.d  # 초기화 스크립트
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=password
+      - MONGO_INITDB_DATABASE=goalmaster
+    networks:
+      - goalmaster-network
+
+  # 개발 환경에서 MongoDB GUI 도구 (선택사항)
+  mongo-express:
+    image: mongo-express:latest
+    ports:
+      - "8081:8081"
+    environment:
+      - ME_CONFIG_MONGODB_ADMINUSERNAME=admin
+      - ME_CONFIG_MONGODB_ADMINPASSWORD=password
+      - ME_CONFIG_MONGODB_SERVER=mongodb
+      - ME_CONFIG_MONGODB_PORT=27017
+    depends_on:
+      - mongodb
+    networks:
+      - goalmaster-network
+
+  # Redis 캐시 서버 (성능 최적화용)
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    networks:
+      - goalmaster-network
+
+volumes:
+  mongodb_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  goalmaster-network:
+    driver: bridge
